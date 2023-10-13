@@ -293,6 +293,8 @@ peer:
     # modification that might corrupt the peer operations.
     fileSystemPath: data/peer
 
+#    etcdAddress: "localhost:2379"
+
     # BCCSP (Blockchain crypto provider): Select which crypto implementation or
     # library to use
     BCCSP:

@@ -819,50 +819,54 @@ func serve(args []string) error {
 	logger.Infof("Starting peer with ID=[%s], network ID=[%s], address=[%s]", coreConfig.PeerID, coreConfig.NetworkID, coreConfig.PeerAddress)
 
 	logger.Debugf("peer监听链码变化")
-	// 创建etcd客户端
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{"localhost:2379"}, // etcd实例的地址
-		DialTimeout: 5 * time.Second,
-	})
-	if err != nil {
-		fmt.Printf("Failed to connect to etcd: %v", err)
-		return nil
-	}
-	defer cli.Close()
-	// 创建一个watcher
-	go func() {
-		watcher := cli.Watch(context.Background(), "", clientv3.WithPrefix())
-		// 监听键值变化
-		for resp := range watcher {
-			for _, event := range resp.Events {
-				switch event.Type {
-				case clientv3.EventTypePut:
-					// 处理增加键值的逻辑
-					fmt.Printf("Key added: %s, Value: %s\n", event.Kv.Key, event.Kv.Value)
 
-					ccid := string(event.Kv.Key)
-					//address := string(event.Kv.Value)
-					hander, error1 := chaincodeSupport.Launch(ccid)
+	etcdAddress := viper.GetString("peer.etcdAddress")
+	if etcdAddress != "" {
+		// 创建etcd客户端
+		cli, err := clientv3.New(clientv3.Config{
+			Endpoints:   []string{etcdAddress}, // etcd实例的地址
+			DialTimeout: 5 * time.Second,
+		})
+		if err != nil {
+			fmt.Printf("Failed to connect to etcd: %v", err)
+			return nil
+		}
+		defer cli.Close()
+		// 创建一个watcher
+		go func() {
+			watcher := cli.Watch(context.Background(), "", clientv3.WithPrefix())
+			// 监听键值变化
+			for resp := range watcher {
+				for _, event := range resp.Events {
+					switch event.Type {
+					case clientv3.EventTypePut:
+						// 处理增加键值的逻辑
+						fmt.Printf("Key added: %s, Value: %s\n", event.Kv.Key, event.Kv.Value)
 
-					if error1 != nil {
-						errors.Errorf("mb 出错了 错误是%s", error1)
-					}
-					error2 := chaincodeHandlerRegistry.Register(hander)
-					if error2 != nil {
-						errors.Errorf("mb 又出错了 错误是%s", error2)
-					}
-				case clientv3.EventTypeDelete:
-					fmt.Printf("Key deleted: %s", event.Kv.Key)
-					// 处理删除键值的逻辑
-					ccid := string(event.Kv.Key)
-					error3 := chaincodeHandlerRegistry.Deregister(ccid)
-					if error3 != nil {
-						errors.Errorf("mb 删除出错了 错误是%s", error3)
+						ccid := string(event.Kv.Key)
+						//address := string(event.Kv.Value)
+						hander, error1 := chaincodeSupport.Launch(ccid)
+
+						if error1 != nil {
+							errors.Errorf("mb 出错了 错误是%s", error1)
+						}
+						error2 := chaincodeHandlerRegistry.Register(hander)
+						if error2 != nil {
+							errors.Errorf("mb 又出错了 错误是%s", error2)
+						}
+					case clientv3.EventTypeDelete:
+						fmt.Printf("Key deleted: %s", event.Kv.Key)
+						// 处理删除键值的逻辑
+						ccid := string(event.Kv.Key)
+						error3 := chaincodeHandlerRegistry.Deregister(ccid)
+						if error3 != nil {
+							errors.Errorf("mb 删除出错了 错误是%s", error3)
+						}
 					}
 				}
 			}
-		}
-	}()
+		}()
+	}
 
 	// Get configuration before starting go routines to avoid
 	// racing in tests
