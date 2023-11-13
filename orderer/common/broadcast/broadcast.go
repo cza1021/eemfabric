@@ -64,6 +64,7 @@ type Handler struct {
 
 // Handle reads requests from a Broadcast stream, processes them, and returns the responses to the stream
 func (bh *Handler) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
+	broadcastStartTime := time.Now()
 	addr := util.ExtractRemoteAddress(srv.Context())
 	logger.Debugf("Starting new broadcast loop for %s", addr)
 	for {
@@ -88,7 +89,8 @@ func (bh *Handler) Handle(srv ab.AtomicBroadcast_BroadcastServer) error {
 			return err
 		}
 	}
-
+	logger.Errorf("finished broadcastBlock %d ms", time.Since(broadcastStartTime).Milliseconds())
+	return nil
 }
 
 type MetricsTracker struct {
