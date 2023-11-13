@@ -155,6 +155,7 @@ func NewHandler(cm ChainManager, timeWindow time.Duration, mutualTLS bool, metri
 
 // Handle receives incoming deliver requests.
 func (h *Handler) Handle(ctx context.Context, srv *Server) error {
+
 	addr := util.ExtractRemoteAddress(ctx)
 	logger.Debugf("Starting new deliver loop for %s", addr)
 	h.Metrics.StreamsOpened.Add(1)
@@ -197,6 +198,7 @@ func isFiltered(srv *Server) bool {
 }
 
 func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.Envelope) (status cb.Status, err error) {
+	deliverStartTime := time.Now()
 	addr := util.ExtractRemoteAddress(ctx)
 	payload, chdr, shdr, err := h.parseEnvelope(ctx, envelope)
 	if err != nil {
@@ -342,7 +344,8 @@ func (h *Handler) deliverBlocks(ctx context.Context, srv *Server, envelope *cb.E
 	}
 
 	logger.Debugf("[channel: %s] Done delivering to %s for (%p)", chdr.ChannelId, addr, seekInfo)
-
+	logger.Errorf("finished deliverBlock %d ms in [channel:%s]",
+		time.Since(deliverStartTime).Milliseconds(), chdr.ChannelId)
 	return cb.Status_SUCCESS, nil
 }
 
